@@ -12,16 +12,22 @@ fn main() {
     // insert a record
     let record = b"hello";
     let slot_id = insert_record(&mut p, record);
-
     println!("insert returned slot_id: {:?}", slot_id);
-    println!("free_space_start after insert: {}", get_free_space_start(&p));
-    println!("slot_count after insert: {}", get_slot_count(&p));
 
-    // check the slot points where we expect
-    if let Some(id) = slot_id {
-        println!("slot {} offset: {}", id, get_slot_offset(&p, id));
-        println!("slot {} length: {}", id, get_slot_length(&p, id));
+    let id = slot_id.unwrap();
+
+    // confirm the record exists before deletion
+    match get_record(&p, id) {
+        Some(bytes) => println!("before delete: {:?}", String::from_utf8(bytes).unwrap()),
+        None => println!("before delete: not found"),
     }
-    let retrieved = get_record(&p, slot_id.unwrap());
-println!("retrieved: {:?}", String::from_utf8(retrieved).unwrap());
+
+    // delete it
+    delete_record(&mut p, id);
+
+    // confirm it's gone now
+    match get_record(&p, id) {
+        Some(bytes) => println!("after delete: {:?}", String::from_utf8(bytes).unwrap()),
+        None => println!("after delete: not found"),
+    }
 }
