@@ -30,9 +30,13 @@ pub fn set_free_space_start(page: &mut Page, offset: u16) {
     page.data[4..6].copy_from_slice(&offset.to_le_bytes());
 }
 
-pub fn get_slot_offset(page: &Page, slot_id: u16) -> u16 {
+pub fn get_slot_offset(page: &Page, slot_id: u16) -> Option<u16> {
+    let slot_count=get_slot_count(page);
+    if slot_id>=slot_count{
+        return None;
+    }
     let start = 6 + (slot_id * 4) as usize;
-    u16::from_le_bytes(page.data[start..start+2].try_into().unwrap())
+    Some(u16::from_le_bytes(page.data[start..start+2].try_into().unwrap()))
 }
 
 pub fn set_slot_offset(page: &mut Page,slot_id:u16,offset: u16){
@@ -41,13 +45,18 @@ pub fn set_slot_offset(page: &mut Page,slot_id:u16,offset: u16){
 
 
 }
-pub fn set_slot_length(page: &mut Page,slot_id:u16,length: u16){
+pub fn set_slot_length(page: &mut Page,slot_id:u16,length:u16){
+    
     let start=6+(slot_id*4) as usize;
     page.data[start+2..start+4].copy_from_slice(&length.to_le_bytes());
 }
-pub fn get_slot_length(page: &Page, slot_id: u16) -> u16 {
+pub fn get_slot_length(page: &Page, slot_id: u16) -> Option<u16> {
+    let slot_count=get_slot_count(page);
+    if slot_id>=slot_count{
+        return None;
+    }
     let start = 6 + (slot_id * 4) as usize;
-    u16::from_le_bytes(page.data[start+2..start+4].try_into().unwrap())
+    Some(u16::from_le_bytes(page.data[start+2..start+4].try_into().unwrap()))
 }
 pub fn insert_record(page: &mut Page, record: &[u8]) -> Option<u16>{
     let slot_id=get_slot_count(page);
@@ -74,8 +83,8 @@ pub fn insert_record(page: &mut Page, record: &[u8]) -> Option<u16>{
 
 }
 pub fn get_record(page: &Page, slot_id: u16) ->Option< Vec<u8>> {
-    let offset = get_slot_offset(page, slot_id) as usize;
-    let length = get_slot_length(page, slot_id) as usize;
+    let offset = get_slot_offset(page, slot_id)? as usize;
+    let length = get_slot_length(page, slot_id)? as usize;
     if length==0{
         return None;
     }
