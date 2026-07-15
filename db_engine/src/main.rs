@@ -1,33 +1,44 @@
+mod row;
 mod page;
+use row::*;
 use page::*;
 
 fn main() {
-    let mut p = Page { data: [0u8; 4096] };
+    // define schema: (Int, Text, Float)
+    let schema = Schema {
+        columns: vec![ColumnType::Int, ColumnType::Text, ColumnType::Float],
+    };
 
-    // initialize header
+    // build a row
+    let original_row: Row = vec![
+        Value::Int(42),
+        Value::Text("Alice".to_string()),
+        Value::Float(92.5),
+    ];
+
+    // serialize it
+    let bytes = serialize_row(&original_row, &schema);
+    println!("serialized to {} bytes", bytes.len());
+
+    // set up a page and store the bytes
+    let mut p = Page { data: [0u8; 4096] };
     set_page_id(&mut p, 1);
     set_slot_count(&mut p, 0);
     set_free_space_start(&mut p, 4096);
 
-    // insert a record
-    let record = b"hello";
-    let slot_id = insert_record(&mut p, record);
-    println!("insert returned slot_id: {:?}", slot_id);
+    let slot_id = insert_record(&mut p, &bytes).unwrap();
+    println!("stored in slot {}", slot_id);
 
-    let id = slot_id.unwrap();
+    // read it back and deserialize
+    let retrieved_bytes = get_record(&p, slot_id).unwrap();
+    let recovered_row = deserialize_row(&retrieved_bytes, &schema);
 
-    // confirm the record exists before deletion
-    match get_record(&p, id) {
-        Some(bytes) => println!("before delete: {:?}", String::from_utf8(bytes).unwrap()),
-        None => println!("before delete: not found"),
-    }
-
-    // delete it
-    delete_record(&mut p, id);
-
-    // confirm it's gone now
-    match get_record(&p, id) {
-        Some(bytes) => println!("after delete: {:?}", String::from_utf8(bytes).unwrap()),
-        None => println!("after delete: not found"),
+    // print to confirm the round trip
+    for value in &recovered_row {
+        match value {
+            Value::Int(i) => println!("Int: {}", i),
+            Value::Float(f) => println!("Float: {}", f),
+            Value::Text(s) => println!("Text: {}", s),
+        }
     }
 }
